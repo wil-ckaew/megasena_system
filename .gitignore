@@ -177,3 +177,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Adicionais para seu projeto específico
+**/__pycache__/
+*.pyc
+.env
+.env.local
+.vscode/
+.idea/
+*.log
+resultados_megasena.csv
