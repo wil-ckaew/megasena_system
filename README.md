@@ -27,285 +27,374 @@ O **MegaSena AI** é um projeto fullstack que utiliza análise de padrões hist�
 └──────────────────────┘           │  - Probabilidades        │
                                    └──────────────────────────┘
 ```
+# ============================================
+# 6. README COMPLETO
+# ============================================
 
----
+cat > ~/rust/megasena_system/README.md << 'EOF'
+# 🎰 MegaSena AI - Sistema FullStack Inteligente
 
-## 🚀 Quickstart
+Sistema completo para geração otimizada de jogos da Mega-Sena, combinando:
 
-### Pré-requisitos
-- **Docker** e **Docker Compose**
-- Ou localmente: Node.js 18+, Rust 1.70+, Python 3.10+
+- **🦀 Backend Rust**: API Gateway e lógica de negócios
+- **🤖 IA Python**: Machine Learning e análise estatística
+- **⚛️ Frontend Next.js**: Interface web moderna e responsiva
 
-### Iniciar com Docker Compose
+## 🚀 Começo Rápido
 
-```bash
-cd /home/kimel/rust/megasena_system
-docker compose up -d --build
-```
-
-**Serviços iniciados:**
-- 🎨 Frontend: http://localhost:3000
-- 🔧 Backend: http://localhost:8080
-- 🤖 ML Service: http://localhost:5000
-
-### Parar os serviços
+### Opção 1: Docker (Recomendado)
 
 ```bash
-docker compose down
-```
+# 1. Clone/baixe o projeto e navegue até ele
+cd megasena_system
 
----
+# 2. Torne o script executável
+chmod +x start.sh
 
-## 📁 Estrutura do Projeto
+# 3. Inicie todos os serviços
+./start.sh start
 
-```
+# 4. Acesse:
+#    Frontend: http://localhost:3000
+#    Backend Rust: http://localhost:8080
+#    IA Python: http://localhost:5001/docs
+
+Opção 2: Desenvolvimento Local
+bash
+
+# Execute o modo desenvolvimento
+./start.sh dev
+
+📁 Estrutura do Projeto
+text
+
 megasena_system/
-├── frontend_nextjs/              # Interface React + Next.js
-│   ├── pages/
-│   │   ├── index.js              # Página principal (elegante)
-│   │   └── api/
-│   │       └── generate.js        # Endpoint /api/generate
-│   ├── components/
-│   │   └── ApostasTable.js        # Componente de bolas numeradas
-│   ├── styles/
-│   │   └── globals.css            # Estilos globais + fonte
-│   └── Dockerfile
-│
-├── backend_rust/                 # API REST em Rust
+├── backend_rust/          # Backend em Rust (Actix-web)
 │   ├── src/
-│   │   ├── main.rs               # Entrada principal
-│   │   ├── routes.rs             # Definição de rotas
-│   │   └── handlers/
-│   │       └── megasena_handler.rs # Lógica da Mega Sena
 │   ├── Cargo.toml
 │   └── Dockerfile
-│
-├── ml_service/                   # Serviço de IA em Flask
-│   ├── app.py                    # Aplicação Flask
-│   ├── megasena_ai_v6.py         # Modelo de IA (v6)
-│   ├── megasena_rf_model.joblib  # Modelo Random Forest treinado
+├── ia_python/            # IA em Python (FastAPI)
+│   ├── main.py
 │   ├── requirements.txt
 │   └── Dockerfile
-│
-├── docker-compose.yml            # Orquestração dos serviços
-└── README.md                      # Este arquivo
-```
+├── frontend_nextjs/      # Frontend em Next.js
+│   ├── pages/
+│   ├── components/
+│   ├── styles/
+│   └── Dockerfile
+├── resultados_megasena.csv  # Dados históricos
+├── docker-compose.yml    # Orquestração Docker
+├── start.sh             # Script de controle
+└── README.md           # Esta documentação
 
----
+🛠️ Serviços e Portas
+Serviço	Porta	Descrição	URL
+Frontend Next.js	3000	Interface web	http://localhost:3000
+Backend Rust	8080	API Gateway	http://localhost:8080
+IA Python	5001	Machine Learning	http://localhost:5001/docs
+🔧 Arquitetura do Sistema
+text
 
-## 🎯 Como Usar
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│                 │    │                 │    │                 │
+│   Frontend      │◄──►│   Backend       │◄──►│   IA Python     │
+│   Next.js       │    │   Rust          │    │   FastAPI       │
+│   (React)       │    │   (Actix-web)   │    │   (ML/Stats)    │
+│                 │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+        │                       │                       │
+        │                       │                       │
+        ▼                       ▼                       ▼
+   Interface Web          Lógica Negócios      Análise de Dados
+   Usuário Final          Validações           Machine Learning
+   Experiência UX         Fallback Rust        Estatística
 
-### Via Interface Web (Recomendado)
+🎯 Funcionalidades
+Backend Rust
 
-1. Abra http://localhost:3000 no navegador
-2. Digite um **dia (1–31)** no campo de entrada
-3. Clique em **"Gerar Aposta"** ou pressione **Enter**
-4. Visualize os **6 números sorteados** em bolas animadas
+    ✅ API RESTful com Actix-web
 
-### Via API REST (cURL)
+    ✅ Validação de dados de entrada
 
-#### Gerar aposta para o dia 15:
+    ✅ Sistema de fallback inteligente
 
-```bash
-curl "http://localhost:3000/api/generate?day=15"
-```
+    ✅ Logging estruturado
 
-**Resposta esperada:**
-```json
-{
-  "generated_numbers": [7, 18, 25, 34, 42, 55],
-  "raw": {
-    "combinacoes_geradas": [...],
-    "dia": 15,
-    "jogos_sugeridos": [[...], ...],
-    "previsao_modelo": [0, 1],
-    "probabilidades": [...],
-    "grafico_base64": "iVBORw0KGgo..."
-  }
-}
-```
+    ✅ Health checks
 
----
+    ✅ CORS configurado
 
-## 🎨 Design & UX
+IA Python
 
-### Tema Visual
-- **Fundo:** Gradiente suave azul-claro → lilás (leve e elegante)
-- **Cards:** Efeito glassmorphism com backdrop blur
-- **Botões:** Gradiente ouro com transições suaves
-- **Input:** Texto escuro para máxima legibilidade
-- **Fonte:** Poppins (Google Fonts)
+    ✅ Análise de dados históricos CSV
 
-### Animações
-✨ Emoji flutuante no título  
-🎯 Bolas numeradas com efeito brilho (shine)  
-⬆️ Lift effect no hover dos botões  
-🎪 Transições fluidas de entrada/saída
+    ✅ 4 métodos de geração:
 
----
+        Método Caravaca (baseado no dia)
 
-## 🛠️ Desenvolvimento
+        Método Estatístico (frequência)
 
-### Frontend (Next.js)
+        Método IA (machine learning)
 
-```bash
-cd frontend_nextjs
-npm install
-npm run dev  # Desenvolvimento em http://localhost:3000
-npm run build
-npm start
-```
+        Método Híbrido (recomendado)
 
-### Backend (Rust)
+    ✅ API documentada com Swagger/OpenAPI
 
-```bash
-cd backend_rust
-cargo run  # Desenvolvimento em http://localhost:8080
-cargo build --release
-```
+    ✅ Cache inteligente de dados
 
-### ML Service (Flask)
+Frontend Next.js
 
-```bash
-cd ml_service
-pip install -r requirements.txt
-python app.py  # Desenvolvimento em http://localhost:5000
-```
+    ✅ Interface moderna com Tailwind CSS
 
----
+    ✅ Animações com Framer Motion
 
-## 🤖 Modelo de IA
+    ✅ Geração em tempo real
 
-**Tipo:** Random Forest Classifier  
-**Entrada:** Combinação de 6 números (1–60)  
-**Saída:** Previsão binária + Probabilidades  
-**Arquivo:** `ml_service/megasena_rf_model.joblib`
+    ✅ Estatísticas visuais
 
-### Versões de IA disponíveis:
-- `megasena_ai_v2.py` - Versão inicial
-- `megasena_ai_v3.py` - Melhorias v3
-- `megasena_ai_v4.py` - Aprimoramentos v4
-- `megasena_ai_v5.py` - Otimizações v5
-- `megasena_ai_v6.py` - Versão atual (mais precisa)
+    ✅ Responsivo (mobile/desktop)
 
----
+    ✅ Notificações toast
 
-## 📊 Endpoints da API
+📊 Fluxo de Geração
 
-### Next.js API Route
+    Usuário seleciona um dia (1-31) no frontend
 
-| Endpoint | Método | Parâmetros | Retorno |
-|----------|--------|-----------|---------|
-| `/api/generate` | GET | `day` (1–31) | `{ generated_numbers, raw }` |
+    Frontend envia requisição para Backend Rust
 
-### Backend Rust (8080)
+    Backend Rust tenta chamar IA Python
 
-Consultar `backend_rust/src/routes.rs` para endpoints adicionais.
+    IA Python analisa dados e gera jogos otimizados
 
-### ML Service Flask (5000)
+    Backend Rust recebe resposta ou usa fallback
 
-| Endpoint | Método | Body | Retorno |
-|----------|--------|------|---------|
-| `/predict` | POST | `{ "dia": int }` | JSON com números e gráfico |
+    Frontend exibe jogos com estatísticas
 
----
+🐳 Comandos Docker
+bash
 
-## 🔧 Configuração
+# Iniciar todos os serviços
+docker-compose up -d
 
-### Variáveis de Ambiente
+# Parar serviços
+docker-compose down
 
-**Frontend (`.env.local` ou Docker):**
-```env
-NEXT_PUBLIC_API_ML=http://ml_service:5000
-```
+# Ver logs
+docker-compose logs -f
 
-**Backend (`.env`):**
-```env
-DATABASE_URL=postgres://user:pass@db:5432/backend_db
-FLASK_ENV=production
-```
+# Reconstruir e iniciar
+docker-compose up -d --build
 
-**Docker Compose:**
-Consulte `docker-compose.yml` para todas as variáveis.
+# Ver status
+docker-compose ps
 
----
+🔄 Script de Controle
 
-## 📦 Dependências Principais
+O script start.sh fornece controle completo:
+bash
 
-### Frontend
-- **Next.js** 13.5.6
-- **React** 18.2.0
-- **Poppins Font** (Google Fonts)
+./start.sh start      # Iniciar todos os serviços
+./start.sh stop       # Parar serviços
+./start.sh restart    # Reiniciar serviços
+./start.sh clean      # Limpar completamente
+./start.sh dev        # Modo desenvolvimento
+./start.sh status     # Verificar status
+./start.sh logs       # Ver logs em tempo real
+./start.sh build      # Reconstruir imagens
 
-### Backend
-- **Actix-web** (Rust)
-- **PostgreSQL 15**
+🧪 Testando a API
+bash
 
-### ML Service
-- **Flask**
-- **scikit-learn** (Random Forest)
-- **NumPy, Pandas**
-- **Matplotlib** (Gráficos)
+# Testar Backend Rust
+curl http://localhost:8080/health
 
----
+# Testar IA Python
+curl http://localhost:5001/health
 
-## 🐛 Troubleshooting
+# Gerar jogos via API
+curl -X POST http://localhost:8080/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"day": 15}' \
+  | python3 -m json.tool
 
-### "Erro ao gerar aposta: fetch failed"
-**Solução:** Verificar se o serviço ML está rodando:
-```bash
-docker compose logs ml_service
-```
+📈 Métodos de Geração
+1. Método Caravaca
 
-### Input não está visível
-**Solução:** Cores ajustadas para contraste. Se ainda tiver problemas:
-```bash
-docker compose up -d --build frontend
-```
+    Baseado no dia do mês
 
-### Porta já em uso
-```bash
-# Alterar porta no docker-compose.yml:
-ports:
-  - "3001:3000"  # Novo: 3001
-```
+    Algoritmo determinístico
 
----
+    Bom para padrões simples
 
-## 📝 Licença
+2. Método Estatístico
 
-MIT License - Sinta-se livre para usar, modificar e distribuir.
+    Análise de frequência histórica
 
----
+    Considera números quentes/frios
 
-## 👨‍💻 Contribuindo
+    Baseado em probabilidade
 
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+3. Método IA
 
----
+    Machine Learning simples
 
-## 📧 Contato & Suporte
+    Padrões complexos
 
-Para dúvidas, abra uma **Issue** no repositório ou entre em contato.
+    Aprendizado de dados
 
----
+4. Método Híbrido (⭐ RECOMENDADO)
 
-## 🎓 Aprendizados
+    Combina todos os métodos
 
-Este projeto demonstra:
-- ✅ Arquitetura **microserviços** com Docker
-- ✅ Frontend moderno com **Next.js** e **React Hooks**
-- ✅ Backend robusto em **Rust** com **Actix-web**
-- ✅ Integração de **Machine Learning** em produção
-- ✅ Design responsivo e acessível com **CSS puro**
-- ✅ Orquestração com **Docker Compose**
+    Maior diversificação
 
----
+    Melhores resultados
 
-**Feito com ❤️ e ☕**
+🔒 Variáveis de Ambiente
+Backend Rust (.env)
+env
 
-Última atualização: **5 de dezembro de 2025**
+HOST=0.0.0.0
+PORT=8080
+RUST_LOG=info
+PYTHON_IA_URL=http://ia_python:5001/api/generate
+
+IA Python (.env)
+env
+
+HOST=0.0.0.0
+PORT=5001
+DEBUG=False
+CSV_PATH=../resultados_megasena.csv
+
+Frontend Next.js (.env.local)
+env
+
+BACKEND_URL=http://localhost:8080
+PYTHON_IA_URL=http://localhost:5001
+
+🐛 Solução de Problemas
+Problema: Portas já em uso
+bash
+
+# Verificar processos nas portas
+sudo lsof -i :3000 :8080 :5001
+
+# Matar processos se necessário
+sudo kill -9 <PID>
+
+Problema: Docker build falha
+bash
+
+# Limpar cache Docker
+docker system prune -a
+
+# Reconstruir
+./start.sh clean
+./start.sh build
+
+Problema: CSV não encontrado
+bash
+
+# Verificar se o arquivo existe
+ls -la resultados_megasena.csv
+
+# Copiar exemplo se necessário
+cp exemplo.csv resultados_megasena.csv
+
+📝 Formato do CSV
+
+O sistema espera um CSV com colunas:
+text
+
+n1,n2,n3,n4,n5,n6
+1,2,3,4,5,6
+7,8,9,10,11,12
+...
+
+🔮 Roadmap Futuro
+
+    Treinamento de modelo de deep learning
+
+    Sistema de recomendação personalizado
+
+    Dashboard administrativo
+
+    API GraphQL
+
+    Cache Redis
+
+    Autenticação JWT
+
+    Deploy na nuvem (AWS/GCP)
+
+⚠️ Aviso Legal
+
+ATENÇÃO: Este sistema é para fins educacionais e de pesquisa. Não garantimos ganhos em loterias. O jogo deve ser feito com responsabilidade. Consulte as leis da sua região sobre jogos de azar.
+📄 Licença
+
+Projeto educacional - Use com responsabilidade.
+👥 Contribuição
+
+    Fork o projeto
+
+    Crie sua branch (git checkout -b feature/nova-funcionalidade)
+
+    Commit suas mudanças (git commit -m 'Add nova funcionalidade')
+
+    Push para a branch (git push origin feature/nova-funcionalidade)
+
+    Abra um Pull Request
+
+✨ Créditos
+
+Desenvolvido com:
+
+    🦀 Rust + Actix-web
+
+    🐍 Python + FastAPI + scikit-learn
+
+    ⚛️ Next.js + React + Tailwind CSS
+
+    🐳 Docker + Docker Compose
+
+🎰 Que a sorte esteja com você (mas a matemática ajuda mais)!
+EOF
+============================================
+7. ARQUIVOS DE CONFIGURAÇÃO EXTRAS
+============================================
+Gitignore
+
+cat > ~/rust/megasena_system/.gitignore << 'EOF'
+Dependencies
+
+node_modules/
+**/target/
+**/pycache/
+**/*.pyc
+**/venv/
+**/.env
+**/.env.local
+Build outputs
+
+**/dist/
+**/build/
+**/.next/
+**/out/
+IDE
+
+.vscode/
+.idea/
+*.swp
+*.swo
+Logs
+
+*.log
+logs/
+OS
+
+.DS_Store
+Thumbs.db
+Docker
+
+*.tar.gz

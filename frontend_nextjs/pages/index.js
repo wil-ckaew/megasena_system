@@ -1,171 +1,231 @@
-import { useState } from "react";
-import ApostasTable from "../components/ApostasTable";
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  const [day, setDay] = useState("");
-  const [results, setResults] = useState([]);
+  const [day, setDay] = useState(new Date().getDate());
+  const [game, setGame] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState({ python: '❓', rust: '❓' });
 
-  async function gerarAposta() {
-    if (!day) {
-      setError("Por favor, digite um dia");
-      return;
-    }
+  useEffect(() => {
+    checkServices();
+  }, []);
 
-    setLoading(true);
-    setError("");
-    setResults([]);
+  const checkServices = async () => {
+    try {
+      const rustRes = await fetch('http://localhost:8080/health');
+      setStats(s => ({ ...s, rust: rustRes.ok ? '✅' : '❌' }));
+    } catch { setStats(s => ({ ...s, rust: '❌' })); }
 
     try {
-      const res = await fetch(`/api/generate?day=${day}`);
-      const data = await res.json();
+      const pythonRes = await fetch('http://localhost:5000/health');
+      setStats(s => ({ ...s, python: pythonRes.ok ? '✅' : '❌' }));
+    } catch { setStats(s => ({ ...s, python: '❌' })); }
+  };
 
-      if (!res.ok) {
-        setError(data.error || "Erro ao gerar aposta");
-        return;
-      }
+  const generateWithAI = async () => {
+    setLoading(true);
+    setError('');
+    setGame(null);
 
-      if (data.generated_numbers && Array.isArray(data.generated_numbers)) {
-        setResults(data.generated_numbers);
-      } else {
-        setError("Resposta inválida do servidor");
+    try {
+      const response = await fetch('http://localhost:8080/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ day: parseInt(day) }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = await response.json();
+      if (data.success && data.games[0]) {
+        setGame({
+          ...data.games[0],
+          method: data.method,
+          source: data.games[0].source
+        });
       }
     } catch (err) {
-      setError(`Erro: ${err.message}`);
-      console.error("Erro completo:", err);
+      setError(`Erro: ${err.message}. A IA Python está rodando?`);
     } finally {
       setLoading(false);
-    }
-  }
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      gerarAposta();
     }
   };
 
   return (
-    <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #e0f2ff 0%, #e9e6ff 50%, #f8fafc 100%)' }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
-        * { font-family: 'Poppins', sans-serif; }
+    <div style={styles.container}>
+      <h1>🤖 Mega-Sena com IA Python</h1>
+      <p>Análise de 52 sorteios históricos usando Machine Learning</p>
+      
+      <div style={styles.status}>
+        <div>🐍 Python ML: {stats.python} :5000</div>
+        <div>🦀 Rust Proxy: {stats.rust} :8080</div>
+        <button onClick={checkServices} style={styles.smallBtn}>🔄</button>
+      </div>
 
-        .card {
-          background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.78));
-          border-radius: 18px;
-          padding: 28px;
-          box-shadow: 0 10px 30px rgba(16,24,40,0.06);
-          border: 1px solid rgba(99,102,241,0.06);
-        }
-
-        .label-center {
-          text-align: center;
-          color: #0f172a;
-          font-weight: 600;
-          margin-bottom: 10px;
-        }
-
-        .controls-row {
-          display: flex;
-          gap: 16px;
-          align-items: center;
-          justify-content: center;
-          flex-wrap: wrap;
-        }
-
-        .input-elegant {
-          background: rgba(255,255,255,0.98);
-          border: 1px solid rgba(15,23,42,0.08);
-          color: #0f172a;
-          padding: 12px 16px;
-          border-radius: 12px;
-          min-width: 180px;
-          font-weight: 600;
-          box-shadow: 0 6px 18px rgba(2,6,23,0.04);
-          outline: none;
-        }
-
-        .input-elegant::placeholder { color: #94a3b8; }
-
-        .input-elegant:focus {
-          box-shadow: 0 8px 24px rgba(99,102,241,0.12);
-          border-color: rgba(99,102,241,0.6);
-        }
-
-        .btn-elegant {
-          background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%);
-          color: #0f172a;
-          border: none;
-          padding: 12px 20px;
-          font-weight: 700;
-          border-radius: 12px;
-          cursor: pointer;
-          transition: transform 0.18s ease, box-shadow 0.18s ease;
-          box-shadow: 0 8px 22px rgba(251,191,36,0.12);
-        }
-
-        .btn-elegant:hover:not(:disabled) {
-          transform: translateY(-3px);
-          box-shadow: 0 18px 40px rgba(251,191,36,0.18);
-        }
-
-        .btn-elegant:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        .hint {
-          text-align: center;
-          color: #475569;
-          margin-top: 14px;
-          font-size: 14px;
-        }
-      `}</style>
-
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 style={{ fontSize: 40, fontWeight: 800, color: '#0f172a' }}>MegaSena AI</h1>
-          <p style={{ color: '#374151', marginTop: 6 }}>Gerador Inteligente de Apostas</p>
+      <div style={styles.card}>
+        <h2>🎯 Gerar com IA</h2>
+        
+        <div style={styles.inputGroup}>
+          <label>Dia para análise (1-31):</label>
+          <input
+            type="number"
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            min="1"
+            max="31"
+            style={styles.input}
+          />
         </div>
 
-        <div className="card">
-          <div className="label-center">Selecione um dia (1–31)</div>
+        <button onClick={generateWithAI} disabled={loading} style={styles.button}>
+          {loading ? '🤖 ANALISANDO DADOS...' : '🧠 GERAR COM IA PYTHON'}
+        </button>
 
-          <div className="controls-row">
-            <input
-              type="number"
-              min="1"
-              max="31"
-              value={day}
-              onChange={(e) => setDay(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Digite o dia"
-              className="input-elegant"
-            />
+        {error && <div style={styles.error}>{error}</div>}
 
-            <button
-              onClick={gerarAposta}
-              disabled={loading}
-              className="btn-elegant"
-            >
-              {loading ? 'Gerando...' : 'Gerar Aposta'}
-            </button>
-          </div>
-
-          {error && (
-            <div style={{ marginTop: 16, textAlign: 'center', color: '#b91c1c', fontWeight: 700 }}>{error}</div>
-          )}
-
-          {Array.isArray(results) && results.length > 0 && (
-            <div style={{ marginTop: 22 }}>
-              <ApostasTable results={results} />
+        {game && (
+          <div style={styles.result}>
+            <h3>✅ JOGO GERADO POR {game.source.toUpperCase()}</h3>
+            <div style={styles.numbers}>
+              {game.numbers.map((num, i) => (
+                <div key={i} style={styles.number}>
+                  <div style={styles.numValue}>{num}</div>
+                  <div style={styles.numInfo}>
+                    {num >= 35 ? 'ALTO' : 'baixo'} • {num % 2 === 0 ? 'PAR' : 'ÍMPAR'}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+            
+            <div style={styles.stats}>
+              <div><strong>Soma:</strong> {game.sum}</div>
+              <div><strong>Altos (≥35):</strong> {game.high_numbers}</div>
+              <div><strong>Pares:</strong> {game.even_numbers}</div>
+            </div>
+            
+            <p style={styles.note}>
+              {game.source === 'python_ml' 
+                ? '✨ Gerado por IA Python analisando dados históricos'
+                : '⚠️ Usando fallback (IA Python indisponível)'}
+            </p>
+          </div>
+        )}
+      </div>
 
-          {!loading && results.length === 0 && !error && (
-            <div className="hint">Digite um dia e pressione <strong>Gerar Aposta</strong></div>
-          )}
-        </div>
-
+      <div style={styles.info}>
+        <h3>📊 Como funciona a IA Python:</h3>
+        <ol>
+          <li>Carrega 52 sorteios históricos do CSV</li>
+          <li>Analisa frequência de cada número</li>
+          <li>Identifica números "quentes" (sorteios recentes)</li>
+          <li>Considera padrões por posição (n1, n2, ..., n6)</li>
+          <li>Combina estatísticas com fator do dia</li>
+          <li>Gera números otimizados probabilisticamente</li>
+        </ol>
+        <p><em>Dados reais analisados: resultados_megasena.csv</em></p>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '20px',
+    fontFamily: 'Arial, sans-serif',
+  },
+  status: {
+    backgroundColor: '#e3f2fd',
+    padding: '15px',
+    borderRadius: '10px',
+    margin: '20px 0',
+    display: 'flex',
+    gap: '20px',
+    alignItems: 'center',
+  },
+  smallBtn: {
+    padding: '5px 10px',
+    marginLeft: 'auto',
+  },
+  card: {
+    backgroundColor: 'white',
+    padding: '30px',
+    borderRadius: '15px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    marginBottom: '30px',
+  },
+  inputGroup: {
+    marginBottom: '20px',
+  },
+  input: {
+    padding: '10px',
+    fontSize: '18px',
+    marginLeft: '10px',
+    width: '80px',
+  },
+  button: {
+    padding: '15px',
+    fontSize: '18px',
+    backgroundColor: '#306998',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    width: '100%',
+    fontWeight: 'bold',
+  },
+  error: {
+    backgroundColor: '#ffebee',
+    color: '#c62828',
+    padding: '15px',
+    borderRadius: '5px',
+    marginTop: '20px',
+  },
+  result: {
+    backgroundColor: '#e8f5e9',
+    padding: '25px',
+    borderRadius: '10px',
+    marginTop: '25px',
+    textAlign: 'center',
+  },
+  numbers: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '15px',
+    margin: '25px 0',
+  },
+  number: {
+    backgroundColor: 'white',
+    padding: '15px',
+    borderRadius: '10px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  numValue: {
+    fontSize: '32px',
+    fontWeight: 'bold',
+    color: '#1a237e',
+  },
+  numInfo: {
+    fontSize: '12px',
+    color: '#666',
+    marginTop: '5px',
+  },
+  stats: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '30px',
+    margin: '20px 0',
+  },
+  note: {
+    fontStyle: 'italic',
+    color: '#666',
+    marginTop: '15px',
+  },
+  info: {
+    backgroundColor: '#f5f5f5',
+    padding: '20px',
+    borderRadius: '10px',
+  },
+};

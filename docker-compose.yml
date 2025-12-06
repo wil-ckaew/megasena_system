@@ -1,58 +1,60 @@
-services:
-  db:
-    image: postgres:15
-    container_name: db
-    restart: always
-    environment:
-      POSTGRES_USER: ckaew
-      POSTGRES_PASSWORD: senha123
-      POSTGRES_DB: backend_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+version: '3.8'
 
+services:
+  # Backend Rust
   backend:
-    build:
-      context: ./backend_rust
-      dockerfile: Dockerfile
-    container_name: backend_rust
-    depends_on:
-      - db
+    build: ./backend_rust
+    container_name: megasena-backend
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://ckaew:senha123@db:5432/backend_db
-    restart: always
-
-  ml_service:
-    build:
-      context: ./ml_service
-      dockerfile: Dockerfile
-    container_name: ml_service
+      - RUST_LOG=info
+      - HOST=0.0.0.0
+      - PORT=8080
+      - PYTHON_ML_SERVICE_URL=http://ia:5000  # <-- Mudar para nome do serviço
+    volumes:
+      - ./resultados_megasena.csv:/app/resultados_megasena.csv
+    networks:
+      - megasena-network
     depends_on:
-      - db
+      - ia  # <-- Garantir que IA inicie primeiro
+    restart: unless-stopped
+
+  # IA Python - CORRIGIDO: apontar para ml_service
+  ia:
+    build: ./ml_service  # <-- Mudar de ia_python para ml_service
+    container_name: megasena-ia
     ports:
-      - "5000:5000"
+      - "5000:5000"  # <-- Usar porta 5000 (consistente com seu código)
     environment:
-      FLASK_ENV: production
-    restart: always
+      - HOST=0.0.0.0
+      - PORT=5000
+      - CSV_PATH=/app/resultados_megasena.csv
+    volumes:
+      - ./resultados_megasena.csv:/app/resultados_megasena.csv
+    networks:
+      - megasena-network
+    restart: unless-stopped
 
+  # Frontend Next.js
   frontend:
-    build:
-      context: ./frontend_nextjs
-      dockerfile: Dockerfile
-    container_name: frontend_nextjs
-    depends_on:
-      - backend
-      - ml_service
+    build: ./frontend_nextjs
+    container_name: megasena-frontend
     ports:
       - "3000:3000"
     environment:
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://backend:8080
-      NEXT_PUBLIC_ML_API_URL: http://ml_service:5000
-    restart: always
+      HOST: 0.0.0.0
+    stdin_open: true
+    tty: true
 
-volumes:
-  pgdata:
+    networks:
+      - megasena-network
+    depends_on:
+      - backend
+    restart: unless-stopped
 
+networks:
+  megasena-network:
+    driver: bridge

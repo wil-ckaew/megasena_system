@@ -1,1 +1,1 @@
-pub mod megasena_handler;
+pub mod api;

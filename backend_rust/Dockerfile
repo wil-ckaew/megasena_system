@@ -1,19 +1,38 @@
-# Etapa de compilação
-FROM rust:1.83 as builder
-WORKDIR /usr/src/backend_rust
+FROM rust:latest as builder
+
+# Instala dependências SSL e outras necessárias
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Variáveis para corrigir problemas de rede do Cargo
+ENV CARGO_HTTP_MULTIPLEXING=false
+ENV CARGO_HTTP_TIMEOUT=600    
+
+# CORREÇÃO: Remover comentário da linha do WORKDIR
+WORKDIR /usr/src/app
+
 COPY . .
+
+# Compilar
 RUN cargo build --release
 
-# Etapa de execução
+# Imagem final
 FROM debian:bookworm-slim
 
-# ✅ Corrige o erro "libssl.so.3"
 RUN apt-get update && apt-get install -y \
-    libssl-dev \
     ca-certificates \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=builder /usr/src/backend_rust/target/release/backend_rust .
+
+# Copiar binário
+COPY --from=builder /usr/src/app/target/release/megasena_backend .
+
+# Expor porta
 EXPOSE 8080
-CMD ["./backend_rust"]
+
+# Comando
+CMD ["./megasena_backend"]
