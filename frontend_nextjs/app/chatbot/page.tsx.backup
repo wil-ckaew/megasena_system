@@ -1,0 +1,321 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+
+interface Message {
+  id: number;
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
+export default function ChatbotPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    { id: 1, text: 'Olá! Sou o assistente da Mega-Sena. Como posso ajudar?', sender: 'bot', timestamp: new Date() },
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMessage: Message = {
+      id: messages.length + 1,
+      text: input,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      // Enviar para o backend Rust
+      const response = await fetch('http://localhost:8080/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
+      });
+
+      const data = await response.json();
+
+      const botMessage: Message = {
+        id: messages.length + 2,
+        text: data.response || 'Desculpe, não consegui processar sua pergunta.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        text: 'Erro de conexão com o servidor. Verifique se o backend está rodando.',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      <nav style={styles.nav}>
+        <Link href="/" style={styles.navLink}>🏠 Home</Link>
+        <Link href="/bolao" style={styles.navLink}>🎯 Bolão</Link>
+        <Link href="/chatbot" style={styles.navLink}>🤖 ChatBot</Link>
+      </nav>
+
+      <h1>🤖 ChatBot da Mega-Sena</h1>
+      <p>Faça perguntas sobre estatísticas, probabilidades e estratégias</p>
+
+      <div style={styles.chatContainer}>
+        <div style={styles.chatHeader}>
+          <div style={styles.botInfo}>
+            <div style={styles.botAvatar}>🤖</div>
+            <div>
+              <h3>Assistente Mega-Sena</h3>
+              <p style={styles.botStatus}>Online • IA Python + Rust</p>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.messagesContainer}>
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              style={{
+                ...styles.message,
+                ...(message.sender === 'user' ? styles.userMessage : styles.botMessage),
+              }}
+            >
+              <div style={styles.messageContent}>
+                {message.text}
+              </div>
+              <div style={styles.timestamp}>
+                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={styles.typingIndicator}>
+              <div style={styles.typingDot}></div>
+              <div style={styles.typingDot}></div>
+              <div style={styles.typingDot}></div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div style={styles.inputContainer}>
+          <textarea
+            style={styles.textarea}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Digite sua pergunta sobre a Mega-Sena..."
+            rows={3}
+            disabled={loading}
+          />
+          <button
+            style={styles.sendButton}
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+          >
+            {loading ? 'Enviando...' : 'Enviar'}
+          </button>
+        </div>
+
+        <div style={styles.suggestions}>
+          <p style={styles.suggestionsTitle}>Perguntas sugeridas:</p>
+          <div style={styles.suggestionButtons}>
+            {[
+              'Quais são os números mais sorteados?',
+              'Como funciona a IA do sistema?',
+              'Qual a probabilidade de ganhar?',
+              'Gerar um jogo otimizado',
+            ].map((suggestion, index) => (
+              <button
+                key={index}
+                style={styles.suggestionButton}
+                onClick={() => setInput(suggestion)}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '20px',
+    fontFamily: 'Arial, sans-serif',
+  },
+  nav: {
+    display: 'flex',
+    gap: '20px',
+    marginBottom: '30px',
+    padding: '15px',
+    backgroundColor: '#f0f0f0',
+    borderRadius: '10px',
+  },
+  navLink: {
+    textDecoration: 'none',
+    color: '#306998',
+    fontWeight: 'bold',
+    padding: '10px 20px',
+    borderRadius: '5px',
+    backgroundColor: 'white',
+    border: '2px solid #306998',
+  },
+  chatContainer: {
+    backgroundColor: 'white',
+    borderRadius: '15px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+    overflow: 'hidden',
+    marginTop: '20px',
+  },
+  chatHeader: {
+    backgroundColor: '#306998',
+    color: 'white',
+    padding: '20px',
+  },
+  botInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+  },
+  botAvatar: {
+    fontSize: '40px',
+  },
+  botStatus: {
+    opacity: 0.8,
+    fontSize: '14px',
+  },
+  messagesContainer: {
+    height: '500px',
+    overflowY: 'auto',
+    padding: '20px',
+    backgroundColor: '#f5f5f5',
+  },
+  message: {
+    marginBottom: '15px',
+    maxWidth: '80%',
+    padding: '15px',
+    borderRadius: '15px',
+    position: 'relative',
+  },
+  userMessage: {
+    marginLeft: 'auto',
+    backgroundColor: '#306998',
+    color: 'white',
+    borderBottomRightRadius: '5px',
+  },
+  botMessage: {
+    marginRight: 'auto',
+    backgroundColor: 'white',
+    color: '#333',
+    borderBottomLeftRadius: '5px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  },
+  messageContent: {
+    fontSize: '16px',
+    lineHeight: '1.5',
+  },
+  timestamp: {
+    fontSize: '12px',
+    opacity: 0.7,
+    marginTop: '5px',
+    textAlign: 'right',
+  },
+  typingIndicator: {
+    display: 'flex',
+    gap: '5px',
+    padding: '15px',
+    backgroundColor: 'white',
+    borderRadius: '15px',
+    width: 'fit-content',
+    marginBottom: '15px',
+  },
+  typingDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#306998',
+    animation: 'typing 1.4s infinite',
+  },
+  inputContainer: {
+    padding: '20px',
+    borderTop: '1px solid #eee',
+    display: 'flex',
+    gap: '10px',
+  },
+  textarea: {
+    flex: 1,
+    padding: '15px',
+    fontSize: '16px',
+    border: '2px solid #ddd',
+    borderRadius: '10px',
+    resize: 'none',
+    fontFamily: 'Arial, sans-serif',
+  },
+  sendButton: {
+    padding: '15px 30px',
+    backgroundColor: '#306998',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+  },
+  suggestions: {
+    padding: '20px',
+    backgroundColor: '#f9f9f9',
+    borderTop: '1px solid #eee',
+  },
+  suggestionsTitle: {
+    marginBottom: '10px',
+    color: '#666',
+    fontSize: '14px',
+  },
+  suggestionButtons: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  suggestionButton: {
+    padding: '8px 15px',
+    backgroundColor: 'white',
+    border: '1px solid #ddd',
+    borderRadius: '20px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
+  },
+};

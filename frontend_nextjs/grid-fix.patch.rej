@@ -1,0 +1,11 @@
+--- bolao/page.tsx.orig
++++ bolao/page.tsx
+@@ -206,7 +206,7 @@
+     return (
+       <Box sx={{ flexGrow: 1, p: 3 }}>
+         <Grid container spacing={3}>
+-          <Grid item xs={12} md={4}>
++          <Grid xs={12} md={4}>
+             <Card sx={{ height: '100%' }}>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom color="primary">

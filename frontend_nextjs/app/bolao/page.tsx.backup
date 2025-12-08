@@ -1,0 +1,756 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  Box,
+  Chip,
+  Slider,
+  ToggleButton,
+  ToggleButtonGroup,
+  Alert,
+  CircularProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider,
+  LinearProgress,
+} from '@mui/material';
+import {
+  Casino as CasinoIcon,
+  Analytics as AnalyticsIcon,
+  TrendingUp as TrendingUpIcon,
+  Share as ShareIcon,
+  Download as DownloadIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
+  CompareArrows as CompareIcon,
+  ShowChart as ChartIcon,
+  Group as GroupIcon,
+  EmojiEvents as TrophyIcon,
+} from '@mui/icons-material';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Legend, Tooltip as RechartsTooltip } from 'recharts';
+
+interface Game {
+  numbers: number[];
+  sum: number;
+  highNumbers: number;
+  evenNumbers: number;
+}
+
+interface BolaoStats {
+  totalUniqueNumbers: number;
+  coveragePercentage: number;
+  averageHighsPerGame: number;
+  averageSumPerGame: number;
+  distributionByRange: number[];
+}
+
+export default function BolaoPage() {
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [quantity, setQuantity] = useState(10);
+  const [method, setMethod] = useState('optimized');
+  const [stats, setStats] = useState<BolaoStats | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [analysisDialog, setAnalysisDialog] = useState(false);
+  const [customGame, setCustomGame] = useState('');
+  const [budget, setBudget] = useState(100);
+
+  const numberRanges = [
+    { label: '1-15', color: '#8884d8' },
+    { label: '16-30', color: '#82ca9d' },
+    { label: '31-45', color: '#ffc658' },
+    { label: '46-60', color: '#ff8042' },
+  ];
+
+  const loadHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/historico_boloes?limit=5');
+      const data = await response.json();
+      setHistory(data.boloes || []);
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const generateBolao = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/bolao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantidade_jogos: quantity,
+          metodo: method,
+          incluir_historico: true,
+        }),
+      });
+      
+      const data = await response.json();
+      setGames(data.bolao.map((numbers: number[]) => ({
+        numbers,
+        sum: numbers.reduce((a, b) => a + b, 0),
+        highNumbers: numbers.filter(n => n >= 35).length,
+        evenNumbers: numbers.filter(n => n % 2 === 0).length,
+      })));
+      
+      setStats(data.estatisticas);
+    } catch (error) {
+      console.error('Erro ao gerar bolão:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addCustomGame = () => {
+    const numbers = customGame.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 60);
+    if (numbers.length === 6) {
+      const newGame: Game = {
+        numbers,
+        sum: numbers.reduce((a, b) => a + b, 0),
+        highNumbers: numbers.filter(n => n >= 35).length,
+        evenNumbers: numbers.filter(n => n % 2 === 0).length,
+      };
+      setGames([...games, newGame]);
+      setCustomGame('');
+    }
+  };
+
+  const removeGame = (index: number) => {
+    setGames(games.filter((_, i) => i !== index));
+  };
+
+  const analyzeGame = (game: Game) => {
+    setSelectedGame(game);
+    setAnalysisDialog(true);
+  };
+
+  const exportToCSV = () => {
+    const csvContent = [
+      ['Jogo', 'Números', 'Soma', 'Altos (≥35)', 'Pares'].join(','),
+      ...games.map((game, index) => [
+        `Jogo ${index + 1}`,
+        game.numbers.join(' '),
+        game.sum,
+        game.highNumbers,
+        game.evenNumbers,
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bolao_megasena_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+  };
+
+  const calculateCost = () => games.length * 4.5;
+  const remainingBudget = budget - calculateCost();
+
+  // Dados para gráficos
+  const coverageData = stats ? [
+    { name: 'Cobertos', value: stats.totalUniqueNumbers, color: '#4caf50' },
+    { name: 'Não Cobertos', value: 60 - stats.totalUniqueNumbers, color: '#f44336' },
+  ] : [];
+
+  const distributionData = stats ? stats.distributionByRange.map((value, index) => ({
+    name: numberRanges[index].label,
+    value,
+    color: numberRanges[index].color,
+  })) : [];
+
+  return (
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
+      {/* Header */}
+      <Paper sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="h4" gutterBottom>
+              <GroupIcon sx={{ mr: 2, verticalAlign: 'middle' }} />
+              Painel de Bolão Mega-Sena
+            </Typography>
+            <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              Crie e gerencie boloes otimizados com IA
+            </Typography>
+          </Box>
+          <TrophyIcon sx={{ fontSize: 60, opacity: 0.8 }} />
+        </Box>
+      </Paper>
+
+      <Grid container spacing={3}>
+        {/* Painel de Controle */}
+        <Grid xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom color="primary">
+                <CasinoIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                Configurações do Bolão
+              </Typography>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography gutterBottom>Quantidade de Jogos: {quantity}</Typography>
+                <Slider
+                  value={quantity}
+                  onChange={(_, value) => setQuantity(value as number)}
+                  min={1}
+                  max={30}
+                  step={1}
+                  marks={[
+                    { value: 1, label: '1' },
+                    { value: 10, label: '10' },
+                    { value: 20, label: '20' },
+                    { value: 30, label: '30' },
+                  ]}
+                />
+              </Box>
+
+              <FormControl fullWidth sx={{ mt: 3 }}>
+                <InputLabel>Método de Geração</InputLabel>
+                <Select
+                  value={method}
+                  label="Método de Geração"
+                  onChange={(e) => setMethod(e.target.value)}
+                >
+                  <MenuItem value="optimized">Otimizado (IA)</MenuItem>
+                  <MenuItem value="balanced">Balanceado</MenuItem>
+                  <MenuItem value="highs">Com Mais Altos</MenuItem>
+                  <MenuItem value="lows">Com Mais Baixos</MenuItem>
+                  <MenuItem value="coverage">Maximizar Cobertura</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box sx={{ mt: 3 }}>
+                <Typography gutterBottom>Orçamento: R$ {budget.toFixed(2)}</Typography>
+                <Slider
+                  value={budget}
+                  onChange={(_, value) => setBudget(value as number)}
+                  min={4.5}
+                  max={1000}
+                  step={4.5}
+                  marks={[
+                    { value: 4.5, label: 'R$ 4,50' },
+                    { value: 100, label: 'R$ 100' },
+                    { value: 500, label: 'R$ 500' },
+                  ]}
+                />
+              </Box>
+
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Custo por jogo: R$ 4,50
+                <br />
+                Custo atual: R$ {calculateCost().toFixed(2)}
+                <br />
+                Restante: R$ {remainingBudget.toFixed(2)}
+              </Alert>
+
+              <Button
+                variant="contained"
+                fullWidth
+                size="large"
+                onClick={generateBolao}
+                disabled={loading || remainingBudget < 0}
+                startIcon={loading ? <CircularProgress size={20} /> : <CasinoIcon />}
+                sx={{ mt: 3 }}
+              >
+                {loading ? 'Gerando...' : 'Gerar Bolão Otimizado'}
+              </Button>
+
+              {remainingBudget < 0 && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  Orçamento insuficiente! Reduza a quantidade de jogos.
+                </Alert>
+              )}
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="h6" gutterBottom color="primary">
+                Adicionar Jogo Manual
+              </Typography>
+              <Box display="flex" gap={1}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Ex: 10, 20, 30, 40, 50, 60"
+                  value={customGame}
+                  onChange={(e) => setCustomGame(e.target.value)}
+                />
+                <Button
+                  variant="outlined"
+                  onClick={addCustomGame}
+                  disabled={customGame.split(',').filter(n => n.trim()).length !== 6}
+                >
+                  <AddIcon />
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Lista de Jogos */}
+        <Grid xs={12} md={8}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+                <Typography variant="h6" color="primary">
+                  <GroupIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Jogos do Bolão ({games.length})
+                </Typography>
+                <Box>
+                  <Tooltip title="Exportar CSV">
+                    <IconButton onClick={exportToCSV} color="primary">
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Compartilhar">
+                    <IconButton color="primary">
+                      <ShareIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+
+              {games.length === 0 ? (
+                <Alert severity="info">
+                  Nenhum jogo adicionado. Gere um bolão ou adicione jogos manualmente.
+                </Alert>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Jogo</TableCell>
+                        <TableCell>Números</TableCell>
+                        <TableCell align="center">Soma</TableCell>
+                        <TableCell align="center">Altos (≥35)</TableCell>
+                        <TableCell align="center">Pares</TableCell>
+                        <TableCell align="center">Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {games.map((game, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>
+                            <Typography fontWeight="bold">
+                              Jogo {index + 1}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box display="flex" gap={0.5} flexWrap="wrap">
+                              {game.numbers.map((num, i) => (
+                                <Chip
+                                  key={i}
+                                  label={num.toString().padStart(2, '0')}
+                                  size="small"
+                                  color={num >= 35 ? 'secondary' : 'default'}
+                                  variant={num % 2 === 0 ? 'filled' : 'outlined'}
+                                />
+                              ))}
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={game.sum}
+                              size="small"
+                              color={
+                                game.sum >= 180 && game.sum <= 240
+                                  ? 'success'
+                                  : 'warning'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={game.highNumbers}
+                              size="small"
+                              color={
+                                game.highNumbers >= 2 && game.highNumbers <= 3
+                                  ? 'success'
+                                  : 'warning'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={`${game.evenNumbers}/${6 - game.evenNumbers}`}
+                              size="small"
+                              color={
+                                game.evenNumbers >= 2 && game.evenNumbers <= 4
+                                  ? 'success'
+                                  : 'warning'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Analisar">
+                              <IconButton
+                                size="small"
+                                onClick={() => analyzeGame(game)}
+                              >
+                                <AnalyticsIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Remover">
+                              <IconButton
+                                size="small"
+                                onClick={() => removeGame(index)}
+                                color="error"
+                              >
+                                <RemoveIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Estatísticas */}
+        {stats && (
+          <Grid xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom color="primary">
+                  <TrendingUpIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Estatísticas do Bolão
+                </Typography>
+
+                <Grid container spacing={3} sx={{ mt: 2 }}>
+                  <Grid xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h4" color="primary">
+                        {stats.totalUniqueNumbers}/60
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Números Únicos
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(stats.totalUniqueNumbers / 60) * 100}
+                        sx={{ mt: 1 }}
+                      />
+                    </Paper>
+                  </Grid>
+
+                  <Grid xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h4" color="primary">
+                        {(stats.coveragePercentage * 100).toFixed(1)}%
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Cobertura
+                      </Typography>
+                    </Paper>
+                  </Grid>
+
+                  <Grid xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h4" color="primary">
+                        {stats.averageHighsPerGame.toFixed(1)}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Média de Altos/Jogo
+                      </Typography>
+                    </Paper>
+                  </Grid>
+
+                  <Grid xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="h4" color="primary">
+                        {stats.averageSumPerGame.toFixed(0)}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Soma Média
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={3} sx={{ mt: 2 }}>
+                  <Grid xs={12} md={6}>
+                    <Paper sx={{ p: 2, height: 300 }}>
+                      <Typography variant="subtitle1" gutterBottom align="center">
+                        Cobertura de Números
+                      </Typography>
+                      <ResponsiveContainer width="100%" height="90%">
+                        <PieChart>
+                          <Pie
+                            data={coverageData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {coverageData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Paper>
+                  </Grid>
+
+                  <Grid xs={12} md={6}>
+                    <Paper sx={{ p: 2, height: 300 }}>
+                      <Typography variant="subtitle1" gutterBottom align="center">
+                        Distribuição por Faixa
+                      </Typography>
+                      <ResponsiveContainer width="100%" height="90%">
+                        <BarChart data={distributionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Legend />
+                          <Bar dataKey="value" name="Quantidade">
+                            {distributionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Histórico */}
+        {history.length > 0 && (
+          <Grid xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom color="primary">
+                  <ChartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Histórico de Boloes
+                </Typography>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Data</TableCell>
+                        <TableCell>Jogos</TableCell>
+                        <TableCell align="center">Cobertura</TableCell>
+                        <TableCell align="center">Média Altos</TableCell>
+                        <TableCell align="center">Soma Média</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {history.map((item, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>
+                            {new Date(item.timestamp).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>{item.quantidade || item.jogos?.length || 0}</TableCell>
+                          <TableCell align="center">
+                            {((item.estatisticas?.coveragePercentage || 0) * 100).toFixed(1)}%
+                          </TableCell>
+                          <TableCell align="center">
+                            {item.estatisticas?.averageHighsPerGame?.toFixed(1) || '-'}
+                          </TableCell>
+                          <TableCell align="center">
+                            {item.estatisticas?.averageSumPerGame?.toFixed(0) || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+      </Grid>
+
+      {/* Dialog de Análise */}
+      <Dialog
+        open={analysisDialog}
+        onClose={() => setAnalysisDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <AnalyticsIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Análise Detalhada do Jogo
+        </DialogTitle>
+        <DialogContent>
+          {selectedGame && (
+            <>
+              <Box display="flex" justifyContent="center" gap={2} my={2}>
+                {selectedGame.numbers.map((num, index) => (
+                  <Paper
+                    key={index}
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.2rem',
+                      fontWeight: 'bold',
+                      background: num >= 35
+                        ? 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'
+                        : 'linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%)',
+                      color: 'white',
+                    }}
+                  >
+                    {num.toString().padStart(2, '0')}
+                  </Paper>
+                ))}
+              </Box>
+
+              <Grid container spacing={2} sx={{ mt: 2 }}>
+                <Grid xs={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Soma Total
+                    </Typography>
+                    <Typography variant="h5">
+                      {selectedGame.sum}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color={
+                        selectedGame.sum >= 180 && selectedGame.sum <= 240
+                          ? 'success.main'
+                          : 'warning.main'
+                      }
+                    >
+                      {selectedGame.sum >= 180 && selectedGame.sum <= 240
+                        ? '✅ Dentro da faixa ideal (180-240)'
+                        : '⚠️ Fora da faixa ideal'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid xs={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Números Altos (≥35)
+                    </Typography>
+                    <Typography variant="h5">
+                      {selectedGame.highNumbers}/6
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color={
+                        selectedGame.highNumbers >= 2 && selectedGame.highNumbers <= 3
+                          ? 'success.main'
+                          : 'warning.main'
+                      }
+                    >
+                      {selectedGame.highNumbers >= 2 && selectedGame.highNumbers <= 3
+                        ? '✅ Quantidade ideal'
+                        : '⚠️ Ideal é 2-3 números altos'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid xs={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Pares/Ímpares
+                    </Typography>
+                    <Typography variant="h5">
+                      {selectedGame.evenNumbers}/{6 - selectedGame.evenNumbers}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color={
+                        selectedGame.evenNumbers >= 2 && selectedGame.evenNumbers <= 4
+                          ? 'success.main'
+                          : 'warning.main'
+                      }
+                    >
+                      {selectedGame.evenNumbers >= 2 && selectedGame.evenNumbers <= 4
+                        ? '✅ Balanceamento ideal'
+                        : '⚠️ Desbalanceado'}
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                <Grid xs={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary">
+                      Faixas Numéricas
+                    </Typography>
+                    <Typography variant="body2">
+                      {(() => {
+                        const ranges = [0, 0, 0, 0];
+                        selectedGame.numbers.forEach(num => {
+                          if (num <= 15) ranges[0]++;
+                          else if (num <= 30) ranges[1]++;
+                          else if (num <= 45) ranges[2]++;
+                          else ranges[3]++;
+                        });
+                        return ranges.map((count, i) => `${count} na faixa ${numberRanges[i].label}`).join(', ');
+                      })()}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Alert severity="info" sx={{ mt: 3 }}>
+                <Typography variant="body2">
+                  📊 Este jogo está sendo analisado pelo sistema de IA que compara
+                  com {stats?.totalUniqueNumbers || 'N/A'} sorteios históricos.
+                </Typography>
+              </Alert>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnalysisDialog(false)}>Fechar</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (selectedGame) {
+                // Aqui você pode implementar uma análise mais detalhada via API
+                setAnalysisDialog(false);
+              }
+            }}
+          >
+            Análise Avançada
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+}
